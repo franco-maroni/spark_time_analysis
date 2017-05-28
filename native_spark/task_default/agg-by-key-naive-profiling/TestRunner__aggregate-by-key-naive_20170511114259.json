@@ -1,0 +1,67 @@
+{
+    "0": {
+        "RDDIds": {
+            "3": {
+                "callsite": "textFile at DataGenerator.scala:145",
+                "name": "hdfs://10.0.0.5:9000/test//spark-perf-kv-data"
+            },
+            "4": {
+                "callsite": "textFile at DataGenerator.scala:145",
+                "name": "hdfs://10.0.0.5:9000/test//spark-perf-kv-data"
+            },
+            "5": {
+                "callsite": "map at DataGenerator.scala:145",
+                "name": "MapPartitionsRDD"
+            },
+            "6": {
+                "callsite": "map at DataGenerator.scala:145",
+                "name": "MapPartitionsRDD"
+            },
+            "7": {
+                "callsite": "map at KVDataTest.scala:151",
+                "name": "MapPartitionsRDD"
+            }
+        },
+        "cachedRDDs": [],
+        "duration": 5008722,
+        "genstage": false,
+        "name": "map at KVDataTest.scala:151",
+        "nominalrate": 199651.72752650277,
+        "numtask": 2000,
+        "parentsIds": [],
+        "recordsread": 1000000000,
+        "recordswrite": 0.0,
+        "shufflerecordsread": 0.0,
+        "shufflerecordswrite": 1000000000,
+        "skipped": false,
+        "totalduration": 6063984,
+        "weight": 1.6053424406465362
+    },
+    "1": {
+        "RDDIds": {
+            "8": {
+                "callsite": "groupByKey at KVDataTest.scala:151",
+                "name": "ShuffledRDD"
+            },
+            "9": {
+                "callsite": "map at KVDataTest.scala:151",
+                "name": "MapPartitionsRDD"
+            }
+        },
+        "cachedRDDs": [],
+        "duration": 1055262,
+        "genstage": false,
+        "name": "count at KVDataTest.scala:151",
+        "nominalrate": 947631.9624889365,
+        "numtask": 2000,
+        "parentsIds": [
+            0
+        ],
+        "recordsread": 0.0,
+        "recordswrite": 0.0,
+        "shufflerecordsread": 1000000000,
+        "shufflerecordswrite": 0.0,
+        "skipped": false,
+        "weight": 1.0
+    }
+}

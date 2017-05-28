@@ -1,0 +1,7 @@
+*.log
+*.stderr
+*.out
+*.err
+*.rar
+*.idea
+*.pyc

@@ -1,0 +1,93 @@
+{
+    "job": {
+        "end_job": "0017-05-23T08:36:04.133000", 
+        "start_job": "0017-05-23T08:35:25.379000", 
+        "total_gazzella_stages": 21928, 
+        "total_overhead": 8470.0, 
+        "total_tasks_only": 36979.0, 
+        "total_totalduration": 45449.0
+    }, 
+    "stages": {
+        "0": {
+            "add_taskset": "0017-05-23T08:35:24.229000", 
+            "gazzella": 10098, 
+            "overhead": 1150.0, 
+            "remove_taskset": "0017-05-23T08:35:43.453000", 
+            "start_taskset": "0017-05-23T08:35:25.379000", 
+            "tasks_only": 18074.0, 
+            "totalduration": 19224.0
+        }, 
+        "1": {
+            "add_taskset": "0017-05-23T08:35:43.622000", 
+            "gazzella": 1596, 
+            "overhead": 56.0, 
+            "remove_taskset": "0017-05-23T08:35:46.672000", 
+            "start_taskset": "0017-05-23T08:35:43.678000", 
+            "tasks_only": 2994.0, 
+            "totalduration": 3050.0
+        }, 
+        "13": {
+            "add_taskset": "0017-05-23T08:36:02.676000", 
+            "gazzella": 577, 
+            "overhead": 60.0, 
+            "remove_taskset": "0017-05-23T08:36:03.752000", 
+            "start_taskset": "0017-05-23T08:36:02.736000", 
+            "tasks_only": 1016.0, 
+            "totalduration": 1076.0
+        }, 
+        "2": {
+            "add_taskset": "0017-05-23T08:35:43.638000", 
+            "gazzella": 1935, 
+            "overhead": 3194.0, 
+            "remove_taskset": "0017-05-23T08:35:50.177000", 
+            "start_taskset": "0017-05-23T08:35:46.832000", 
+            "tasks_only": 3345.0, 
+            "totalduration": 6539.0
+        }, 
+        "3": {
+            "add_taskset": "0017-05-23T08:35:50.223000", 
+            "gazzella": 2836, 
+            "overhead": 45.0, 
+            "remove_taskset": "0017-05-23T08:35:53.546000", 
+            "start_taskset": "0017-05-23T08:35:50.268000", 
+            "tasks_only": 3278.0, 
+            "totalduration": 3323.0
+        }, 
+        "4": {
+            "add_taskset": "0017-05-23T08:35:50.240000", 
+            "gazzella": 599, 
+            "overhead": 3860.0, 
+            "remove_taskset": "0017-05-23T08:35:54.868000", 
+            "start_taskset": "0017-05-23T08:35:54.100000", 
+            "tasks_only": 768.0, 
+            "totalduration": 4628.0
+        }, 
+        "5": {
+            "add_taskset": "0017-05-23T08:35:54.918000", 
+            "gazzella": 2210, 
+            "overhead": 29.0, 
+            "remove_taskset": "0017-05-23T08:35:58.930000", 
+            "start_taskset": "0017-05-23T08:35:54.947000", 
+            "tasks_only": 3983.0, 
+            "totalduration": 4011.9999999999995
+        }, 
+        "6": {
+            "add_taskset": "0017-05-23T08:35:58.938000", 
+            "gazzella": 1310, 
+            "overhead": 46.0, 
+            "remove_taskset": "0017-05-23T08:36:00.768000", 
+            "start_taskset": "0017-05-23T08:35:58.984000", 
+            "tasks_only": 1784.0, 
+            "totalduration": 1830.0
+        }, 
+        "7": {
+            "add_taskset": "0017-05-23T08:36:00.792000", 
+            "gazzella": 767, 
+            "overhead": 30.0, 
+            "remove_taskset": "0017-05-23T08:36:02.559000", 
+            "start_taskset": "0017-05-23T08:36:00.822000", 
+            "tasks_only": 1737.0, 
+            "totalduration": 1767.0
+        }
+    }
+}

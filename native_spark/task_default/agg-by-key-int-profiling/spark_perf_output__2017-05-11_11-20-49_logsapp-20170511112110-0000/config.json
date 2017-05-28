@@ -1,0 +1,70 @@
+{
+    "Aws": {
+        "AMI": "ami-7f5ff81f",
+        "AZ": "us-west-2c",
+        "EbsOptimized": true,
+        "HyperThreading": true,
+        "InstanceType": "m3.medium",
+        "KeyPair": "simone2",
+        "Price": "0.015",
+        "Region": "us-west-2",
+        "SecurityGroup": "spark-cluster",
+        "SnapshotId": "snap-4f38bf1c"
+    },
+    "Azure": {
+        "ClusterId": "CSPARKWORK",
+        "Location": "westeurope",
+        "Network": "cspark-vnet2",
+        "NodeImage": {
+            "BlobContainer": "vhds",
+            "Name": "vm-os.vhd",
+            "StorageAccount": "csparkdisks2"
+        },
+        "NodeSize": "Standard_D14_v2_Promo",
+        "PubKeyPath": "C:\\Users\\Simone Ripamonti\\Desktop\\id_rsa.pub",
+        "ResourceGroup": "cspark",
+        "SecurityGroup": "cspark-securitygroup2",
+        "StorageAccount": {
+            "Kind": "storage",
+            "Name": "csparkdisks2",
+            "Sku": "standard_lrs"
+        },
+        "Subnet": "default"
+    },
+    "Benchmark": {
+        "Config": {
+            "NumTrials": 1,
+            "ScaleFactor": 5
+        },
+        "Name": "scala-agg-by-key-int"
+    },
+    "Control": {
+        "Alpha": 0.95,
+        "Beta": 0.33,
+        "CoreAllocation": null,
+        "CoreQuantum": 0.05,
+        "CoreVM": 16,
+        "DeadlineAllocation": null,
+        "K": 50,
+        "MaxExecutor": 4,
+        "OverScale": 2,
+        "TSample": 1000,
+        "Ti": 12000
+    },
+    "CoreAllocation": null,
+    "Deadline": 120000,
+    "DeadlineAllocation": null,
+    "HDFS": false,
+    "Provider": "AZURE",
+    "Spark": {
+        "CPUTask": 1,
+        "ExecutorCore": 16,
+        "ExecutorMemory": "\"100g\"",
+        "ExternalShuffle": "true",
+        "LocalityWait": 0,
+        "LocalityWaitNode": 0,
+        "LocalityWaitProcess": 1,
+        "LocalityWaitRack": 0,
+        "SparkHome": "/usr/local/spark/"
+    }
+}
