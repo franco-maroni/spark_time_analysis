@@ -15,7 +15,6 @@ app_name = sys.argv[2] if len(sys.argv) > 2 else app_dir.split(os.sep)[-1]
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
-
     if isinstance(obj, datetime.datetime):
         serial = obj.isoformat()
         return serial
@@ -43,7 +42,7 @@ def parse_spark_logline(logline):
     match = re.search(cfg.SPARK_LOG_PATTERN,  logline)
     if match is None:
        return {
-            "timestamp": '',
+            "timestamp": None,
             "loglevel": '',
             "classname": '',
             "description": ''
@@ -64,7 +63,7 @@ def equals_fields(log, timestamp=None, loglevel=None, classname=None, descriptio
            (description is None or description in log["description"])
 
 
-def populate_stage_time_struct(msg, time_struct, job_info):
+def populate_stage_time_struct(msg, time_struct, job_info, first_ev):
     match_add_taskset = (re.search(cfg.get_log_fields(cfg.ADD_TASKSET_MSG)["descr"],
                                    msg["description"]),
                          "add_taskset")
@@ -80,12 +79,12 @@ def populate_stage_time_struct(msg, time_struct, job_info):
                                                   match_end_stage])
     if len(match) > 0:
         stage_id, label = match[0][0].group(1), match[0][1]
+        print "{}\t{}-{}".format((msg["timestamp"] - first_ev).total_seconds() * 1000, stage_id, label)
         if stage_id not in time_struct:
             time_struct[stage_id] = {}
         time_struct[stage_id][label] = msg["timestamp"]
-    else:
-        if re.search(cfg.get_log_fields(cfg.END_JOB_MSG)["descr"], msg["description"]) is not None:
-            job_info["end_job"] = msg["timestamp"]
+    elif re.search(cfg.get_log_fields(cfg.END_JOB_MSG)["descr"], msg["description"]) is not None:
+        job_info["end_job"] = msg["timestamp"]
 
 
 stage_time_struct = {}
@@ -98,13 +97,19 @@ with open(app_dir + os.sep + 'app.dat') as log_file:
 # open gazzella log file
 with open(app_dir + os.sep + 'app.json') as stages_file:
     stages = json.load(stages_file)
+
 # open config.json
 with open(app_dir + os.sep + 'config.json') as spark_config_file:
     spark_config = json.load(spark_config_file)
     num_cores = spark_config["Control"]["CoreVM"] * spark_config["Control"]["MaxExecutor"]
+
+# get first event
+first_event = next(i for i in spark_log_lines if i["timestamp"] is not None)["timestamp"]
+print "FIRST EVENT", first_event
+
 # extract stage-specific times
 for i in spark_log_lines:
-    populate_stage_time_struct(i, stage_time_struct, job_time_struct)
+    populate_stage_time_struct(i, stage_time_struct, job_time_struct, first_event)
 
 for s, t in stage_time_struct.items():
     if s != "job_time_struct":
