@@ -117,13 +117,16 @@ for s, t in stage_time_struct.items():
         t["tasks_only"] = (t["remove_taskset"] - t["start_taskset"]).total_seconds() * 1000
         t["overhead"] = (t["start_taskset"] - t["add_taskset"]).total_seconds() * 1000
         t["gazzella"] = stages[s]["duration"]/num_cores  # only valid when num_cores==num_tasks
-        print "STAGE {}:\ntotalduration:\t{}\noverhead:\t{}\t({:.2f} %)\nGAZZELLA:\t{}".format(s,
-                                                                                          t["totalduration"],
-                                                                                          t["overhead"],
-                                                                                          t["overhead"]/t["totalduration"]*100,
-                                                                                          t["gazzella"])
-
-
+        print """ STAGE {}:
+                  totalduration:\t{}
+                  tasks_only:\t\t{}
+                  overhead:\t\t{}\t({:.2f} %)
+                  GAZZELLA:\t\t{}""".format(s,
+                                       t["totalduration"],
+                                       t["tasks_only"],
+                                       t["overhead"],
+                                       t["overhead"]/t["totalduration"]*100,
+                                       t["gazzella"])
 total_overhead = reduce(lambda x, y: x + y, [z["overhead"] for z in stage_time_struct.values()])
 total_tasks_only = reduce(lambda x, y: x + y, [z["tasks_only"] for z in stage_time_struct.values()])
 total_totalduration = reduce(lambda x, y: x + y, [z["totalduration"] for z in stage_time_struct.values()])
