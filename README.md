@@ -1,4 +1,4 @@
 # spark_log_processing
 
-### usage
+### standalone usage
 `python run.py <file-path> <output-file-name>`

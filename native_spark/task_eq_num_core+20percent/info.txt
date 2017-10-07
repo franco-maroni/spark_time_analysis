@@ -1,2 +1,0 @@
-PageRank, KMeans, SVM
-NUM_OF_PARTITIONS = (1.2) * (CORE_VM * MAX_EXECUTOR) = 1.2*16*4 = 76.8 => 77
