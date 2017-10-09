@@ -176,7 +176,7 @@ def main(app_dir, app_name=None):
     total_start_to_end_taskset = reduce(lambda x, y: x + y, [z["start_to_end_taskset"] for z in stage_time_struct.values()])
     total_add_to_end_taskset = reduce(lambda x, y: x + y, [z["add_to_end_taskset"] for z in stage_time_struct.values()])
     total_ta_executor_stages = reduce(lambda x, y: x + y, [z["avg_stage_duration_ta_executor"] for z in stage_time_struct.values()])
-    total_tasks_only_ta_master = reduce(lambda x, y: x + y, [z["avg_stage_duration_ta_master"] for z in stage_time_struct.values()])
+    total_ta_master_stages = reduce(lambda x, y: x + y, [z["avg_stage_duration_ta_master"] for z in stage_time_struct.values()])
 
     job_time_struct["start_job"] = stage_time_struct['0']["start_taskset"]
     job_duration = (job_time_struct["latest_event"] - job_time_struct["start_job"]).total_seconds() * 1000
@@ -184,7 +184,7 @@ def main(app_dir, app_name=None):
     job_time_struct["total_start_to_end_taskset"] = total_start_to_end_taskset
     job_time_struct["total_add_to_end_taskset"] = total_add_to_end_taskset
     job_time_struct["total_ta_executor_stages"] = total_ta_executor_stages
-    job_time_struct["total_tasks_only_ta_master"] = total_tasks_only_ta_master
+    job_time_struct["total_ta_master_stages"] = total_ta_master_stages
     job_time_struct["actual_job_duration"] = job_duration
 
     print("TOTAL TASKS_ONLY:\t{}".format(total_start_to_end_taskset))
