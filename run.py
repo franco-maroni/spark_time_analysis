@@ -5,12 +5,15 @@ import sys
 import os
 import json
 from functools import reduce
+import numpy as np
+import math
 
 if __name__ == "__main__":
     import cfg
 else:
     from . import cfg
 
+PERCENTILES = [71, 72, 73, 74, 75, 76, 77]
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -73,11 +76,11 @@ def populate_stage_time_struct(msg, time_struct, job_info, first_ev):
     match_end_stage = (re.search(cfg.get_log_fields(cfg.END_STAGE_MSG)["descr"],
                                  msg["description"]),
                        "remove_taskset")
-    match_end_task = re.search(cfg.get_log_fields(cfg.END_TASK_MSG)["descr"], msg["description"])
+    match_end_task = (re.search(cfg.get_log_fields(cfg.END_TASK_MSG)["descr"], msg["description"]))
 
     match = list(filter(lambda x: x[0] is not None, [match_add_taskset,
-                                                  match_start_stage,
-                                                  match_end_stage]))
+                                                     match_start_stage,
+                                                     match_end_stage]))
     if len(match) > 0:
         stage_id, label = match[0][0].group(1), match[0][1]
         print("{}\t\t{}-{}".format((msg["timestamp"] - first_ev).total_seconds() * 1000, stage_id, label))
@@ -87,11 +90,27 @@ def populate_stage_time_struct(msg, time_struct, job_info, first_ev):
 #    elif re.search(cfg.get_log_fields(cfg.END_JOB_MSG)["descr"], msg["description"]) is not None:
 #        job_info["end_job"] = msg["timestamp"]
     elif match_end_task is not None:
-        if "sum_of_task_durations_ta_master" not in time_struct[match_end_task.group(2)]:
-            time_struct[match_end_task.group(2)]["sum_of_task_durations_ta_master"] = 0
-        time_struct[match_end_task.group(2)]["sum_of_task_durations_ta_master"] += int(match_end_task.group(4))
+        cur_task_duration = int(match_end_task.group(4))
+        cur_stage_id = match_end_task.group(2)
+        # First time a task of this stage is detected
+        if "sum_of_task_durations_ta_master" not in time_struct[cur_stage_id]:
+            time_struct[cur_stage_id]["sum_of_task_durations_ta_master"] = 0
+            time_struct[cur_stage_id]["min_task_duration"] = \
+                time_struct[cur_stage_id]["t_max_duration"] = cur_task_duration
+            time_struct[cur_stage_id]["task_durations"] = []
+        time_struct[cur_stage_id]["sum_of_task_durations_ta_master"] += cur_task_duration
+        time_struct[cur_stage_id]["min_task_duration"] = min(cur_task_duration,
+                                                             time_struct[cur_stage_id]
+                                                                        ["min_task_duration"])
+        time_struct[cur_stage_id]["t_max_duration"] = max(cur_task_duration,
+                                                             time_struct[cur_stage_id]
+                                                                        ["t_max_duration"])
+        time_struct[cur_stage_id]["task_durations"].append(cur_task_duration)
         job_info["latest_event"] = msg["timestamp"]
 
+
+def sum_all_stages_by_stats(stages, stat):
+    return reduce(lambda x, y: x + y, [z[stat] for z in stages.values()])
 
 def main(app_dir, app_name=None):
     stage_time_struct = {}
@@ -114,7 +133,8 @@ def main(app_dir, app_name=None):
     print("opening {}...".format(app_dir + os.sep + 'config.json'))
     with open(app_dir + os.sep + 'config.json') as spark_config_file:
         spark_config = json.load(spark_config_file)
-        num_cores = spark_config["Control"]["CoreVM"] * spark_config["Control"]["MaxExecutor"]
+        job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * spark_config["Control"]["MaxExecutor"]
+        job_time_struct["num_v"] = num_vertices = spark_config['Benchmark']['Config']['numV']
 
     # get first event
     first_event = next(i for i in spark_log_lines if i["timestamp"] is not None)["timestamp"]
@@ -127,17 +147,45 @@ def main(app_dir, app_name=None):
 
     for s, t in stage_time_struct.items():
         if s != "job_time_struct":
+
+            # calculate mean
+            m = sum(t["task_durations"]) / len(t["task_durations"])
+            # calculate variance using a list comprehension
+            t['t_mean'] = np.mean(t["task_durations"])
+            t["t_variance"] = np.var(t["task_durations"])
+            t["t_std_dev"] = np.std(t["task_durations"])
+            for p in PERCENTILES:
+                t["t_percentile"+str(p)] = np.percentile(t["task_durations"], p)
+
+            t.pop("task_durations")
+            num_batches = math.ceil(stages[s]["numtask"] / num_cores)
+
             t["add_to_end_taskset"] = (t["remove_taskset"] - t["add_taskset"]).total_seconds() * 1000
             t["start_to_end_taskset"] = (t["remove_taskset"] - t["start_taskset"]).total_seconds() * 1000
             t["add_to_start_taskset_overhead"] = (t["start_taskset"] - t["add_taskset"]).total_seconds() * 1000
             t["sum_of_task_durations_ta_executor"] = stages[s]["duration"]
-            t["avg_task_duration_ta_executor"] = stages[s]["duration"]/stages[s]["numtask"]
-            t["avg_stage_duration_ta_executor"] = stages[s]["duration"] / num_cores + 1
-            t["avg_task_duration_ta_master"] = t["sum_of_task_durations_ta_master"] / stages[s]["numtask"]
-            t["avg_stage_duration_ta_master"] = t["sum_of_task_durations_ta_master"] / num_cores + 1
+
+            t["t_avg_duration_ta_executor"] = stages[s]["duration"]/stages[s]["numtask"]
+            t["t_avg_duration_ta_master"] = t["sum_of_task_durations_ta_master"] / stages[s]["numtask"]
+
+            t["s_avg_duration_ta_executor"] = t["t_avg_duration_ta_executor"] * num_batches
+            t["s_avg_duration_ta_master"] = t["t_avg_duration_ta_master"] * num_batches
+            t["s_duration_w_slowest_task"] = t["t_max_duration"] * num_batches
+            t["s_mean_plus_std_dev_stage_duration"] = (t["t_mean"] + t["t_std_dev"]/4) * num_batches
+            for p in PERCENTILES:
+                t["s_percentile"+str(p)] = t["t_percentile"+str(p)] * num_batches
+
             diff_sum_of_task_durations = float(t["sum_of_task_durations_ta_master"] - t["sum_of_task_durations_ta_executor"])
-            diff_avg_task_duration = float(t["avg_task_duration_ta_master"] - t["avg_task_duration_ta_executor"])
-            diff_avg_stage_duration = float(t["avg_stage_duration_ta_master"] - t["avg_stage_duration_ta_executor"])
+            diff_avg_task_duration = float(t["t_avg_duration_ta_master"] - t["t_avg_duration_ta_executor"])
+            diff_avg_stage_duration = float(t["s_avg_duration_ta_master"] - t["s_avg_duration_ta_executor"])
+
+            # TODO
+            t["s_GQ"] = t["sum_of_task_durations_ta_master"] / num_cores / t["add_to_end_taskset"]
+            t["record_processing_time"] = t["sum_of_task_durations_ta_master"] / stages[s]["recordsread"]
+            # modify duration
+            stages[s]["gazzella_duration"] = stages[s]["duration"]
+            stages[s]["duration"] = (t["t_mean"] + t["t_std_dev"]/4) * stages[s]["numtask"]
+
             print(""" STAGE {} \t({}):
                   SUM_OF_TASK_DURATIONS:
                    - ta_executor:\t{}
@@ -154,29 +202,35 @@ def main(app_dir, app_name=None):
                   add_to_end_taskset:\t\t{}
                   start_to_end_taskset:\t\t{}
                   add_to_start_taskset_overhead:\t{}\t({:.2f} %)
-                  """\
-                .format(s,
+                  """.format(s,
                         stages[s]["name"],
                         t["sum_of_task_durations_ta_executor"],
                         t["sum_of_task_durations_ta_master"],
                         diff_sum_of_task_durations,
                         diff_sum_of_task_durations/t["sum_of_task_durations_ta_executor"]*100,
-                        t["avg_task_duration_ta_executor"],
-                        t["avg_task_duration_ta_master"],
+                        t["t_avg_duration_ta_executor"],
+                        t["t_avg_duration_ta_master"],
                         diff_avg_task_duration,
-                        t["avg_stage_duration_ta_executor"],
-                        t["avg_stage_duration_ta_master"],
+                        t["s_avg_duration_ta_executor"],
+                        t["s_avg_duration_ta_master"],
                         diff_avg_stage_duration,
                         t["add_to_end_taskset"],
                         t["start_to_end_taskset"],
                         t["add_to_start_taskset_overhead"],
                         t["add_to_start_taskset_overhead"]/t["add_to_end_taskset"]*100))
 
+
     add_to_start_taskset_overhead = reduce(lambda x, y: x + y, [z["add_to_start_taskset_overhead"] for z in stage_time_struct.values()])
     total_start_to_end_taskset = reduce(lambda x, y: x + y, [z["start_to_end_taskset"] for z in stage_time_struct.values()])
     total_add_to_end_taskset = reduce(lambda x, y: x + y, [z["add_to_end_taskset"] for z in stage_time_struct.values()])
-    total_ta_executor_stages = reduce(lambda x, y: x + y, [z["avg_stage_duration_ta_executor"] for z in stage_time_struct.values()])
-    total_ta_master_stages = reduce(lambda x, y: x + y, [z["avg_stage_duration_ta_master"] for z in stage_time_struct.values()])
+    total_ta_executor_stages = sum_all_stages_by_stats(stage_time_struct, "s_avg_duration_ta_executor")
+    total_ta_master_stages = reduce(lambda x, y: x + y, [z["s_avg_duration_ta_master"] for z in stage_time_struct.values()])
+    total_slowest_task_stages = reduce(lambda x, y: x + y, [z["s_duration_w_slowest_task"] for z in stage_time_struct.values()])
+    total_mean_plus_stddev_stages = sum_all_stages_by_stats(stage_time_struct, "s_mean_plus_std_dev_stage_duration")
+    total_monocore_ta_master_stages = sum_all_stages_by_stats(stage_time_struct, "sum_of_task_durations_ta_master")
+    total_monocore_ta_executor_stages = sum_all_stages_by_stats(stage_time_struct, "sum_of_task_durations_ta_executor")
+
+
 
     job_time_struct["start_job"] = stage_time_struct['0']["start_taskset"]
     job_duration = (job_time_struct["latest_event"] - job_time_struct["start_job"]).total_seconds() * 1000
@@ -185,7 +239,17 @@ def main(app_dir, app_name=None):
     job_time_struct["total_add_to_end_taskset"] = total_add_to_end_taskset
     job_time_struct["total_ta_executor_stages"] = total_ta_executor_stages
     job_time_struct["total_ta_master_stages"] = total_ta_master_stages
+    job_time_struct["total_slowest_task_stages"] = total_slowest_task_stages
     job_time_struct["actual_job_duration"] = job_duration
+    job_time_struct["total_mean_plus_stddev_stages"] = total_mean_plus_stddev_stages
+    job_time_struct["total_monocore_ta_executor_stages"] = total_monocore_ta_executor_stages
+    job_time_struct["total_monocore_ta_master_stages"] = total_monocore_ta_master_stages
+
+    for p in PERCENTILES:
+        job_time_struct["total_percentile"+str(p)] = sum_all_stages_by_stats(stage_time_struct, "s_percentile"+str(p))
+
+    job_time_struct["GQ_executor"] = (total_monocore_ta_executor_stages / job_duration) / num_cores
+    job_time_struct["GQ_master"] = (total_monocore_ta_master_stages / job_duration) / num_cores
 
     print("TOTAL TASKS_ONLY:\t{}".format(total_start_to_end_taskset))
     print("TOTAL OVERHEAD:\t\t{}\t({:.2f} %)".format(add_to_start_taskset_overhead, add_to_start_taskset_overhead / total_add_to_end_taskset * 100))
@@ -218,16 +282,40 @@ def main(app_dir, app_name=None):
         "stages": stages
     }
 
+    # save spark_context file
     out_path_context = app_dir+os.sep+app_name+'_context.json'
     print("dumping to {}".format(out_path_context))
     with open(out_path_context, 'w') as outfile:
         json.dump(SPARK_CONTEXT, outfile, indent=4, sort_keys=True)
 
+    # save time analysis file
     out_path_time_structs = app_dir+os.sep+app_name+'_time_analysis.json'
     print("dumping to {}".format(out_path_time_structs))
     with open(out_path_time_structs, 'w') as outfile:
         json.dump({"stages": stage_time_struct, "job": job_time_struct},
                   outfile, indent=4, sort_keys=True, default=json_serial)
+
+
+    print("{}, {}, {}, {}\n".format(
+        num_vertices[1], job_duration, total_ta_executor_stages, total_ta_master_stages
+    ))
+    '''
+    statistics = {
+        'numV': num_vertices[1],
+        'job_duration': job_duration,
+        'total_ta_executor_stages': total_ta_executor_stages,
+        'total_ta_master_stages': total_ta_master_stages,
+        'total_mean_plus_stddev_stages': total_mean_plus_stddev_stages,
+        'GQ_executor': job_time_struct["GQ_executor"],
+        'GQ_master': job_time_struct["GQ_master"],
+        'GQ_S0': stage_time_struct['0']['s_GQ'],
+        't_record_S0': stage_time_struct['0']['record_processing_time']
+    }
+    for p in PERCENTILES:
+        statistics['total_percentile'+str(p)] = job_time_struct['total_percentile'+str(p)]
+    '''
+    return job_time_struct, stage_time_struct
+
 
 
 if __name__ == "__main__":
