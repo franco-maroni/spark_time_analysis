@@ -123,9 +123,11 @@ def compute_t_task(stages_struct, num_records, num_task):
     """
     reads = {}
     writes = {}
-    for i in range(0, len(stages_struct)):
-        stage = stages_struct[i]
-        stage_id = stage['id']
+    stage_id_list = [int(x) for x in stages_struct.keys()]
+    stage_id_list.sort()
+    for i in stage_id_list:  # range(0, len(stages_struct)):
+        stage = stages_struct[str(i)]
+        stage_id = str(i)
         if len(stage['parent_ids']) == 0:
             if not num_records:
                 num_records = stage['actual_records_read']
@@ -134,8 +136,7 @@ def compute_t_task(stages_struct, num_records, num_task):
             reads[stage_id] = 0
             print(stage_id)
             for parent_id in stage['parent_ids']:
-                reads[stage_id] += writes[parent_id]
-
+                reads[stage_id] += writes[str(parent_id)]
         writes[stage_id] = reads[stage_id] * stage['io_factor']
 
         if not num_task:
@@ -188,8 +189,14 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     for s, t in stage_time_struct.items():
         if s != "job_time_struct":
 
-            # calculate mean
-            m = sum(t["task_durations"]) / len(t["task_durations"])
+            # TODO: avoid replication of fields between profiling and time_analysis. Also, remove unnecessary measures
+            t["id"] = s
+            t["parent_ids"] = stages[s]["parentsIds"]
+            t["actual_records_read"] = stages[s]["actual_records_read"]
+            t["io_factor"] = stages[s]["io_factor"]
+            t["num_task"] = stages[s]["numtask"]
+            t["skipped"] = stages[s]["skipped"]
+            t["t_record_ta_executor"] = stages[s]["t_record_ta_executor"]
             # calculate variance using a list comprehension
             t['t_mean'] = np.mean(t["task_durations"])
             t["t_variance"] = np.var(t["task_durations"])
@@ -211,7 +218,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
             t["s_avg_duration_ta_executor"] = t["t_avg_duration_ta_executor"] * num_batches
             t["s_avg_duration_ta_master"] = t["t_avg_duration_ta_master"] * num_batches
             t["s_duration_w_slowest_task"] = t["t_max_duration"] * num_batches
-            t["s_mean_plus_std_dev_stage_duration"] = (t["t_mean"] + t["t_std_dev"]/4) * num_batches
+            t["s_mean_plus_std_dev_stage_duration"] = (t["t_mean"] + t["t_std_dev"]) * num_batches
             for p in PERCENTILES:
                 t["s_percentile"+str(p)] = t["t_percentile"+str(p)] * num_batches
 
@@ -223,7 +230,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
             t["s_GQ_ta_executor"] = t["sum_of_task_durations_ta_executor"] / num_cores / t["add_to_end_taskset"]
             t["t_record_ta_master"] = t["sum_of_task_durations_ta_master"] / stages[s]["actual_records_read"]
 
-
+            '''
             print(""" STAGE {} \t({}):
                   SUM_OF_TASK_DURATIONS:
                    - ta_executor:\t{}
@@ -256,6 +263,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
                         t["start_to_end_taskset"],
                         t["add_to_start_taskset_overhead"],
                         t["add_to_start_taskset_overhead"]/t["add_to_end_taskset"]*100))
+            '''
 
 
     add_to_start_taskset_overhead = reduce(lambda x, y: x + y, [z["add_to_start_taskset_overhead"] for z in stage_time_struct.values()])
@@ -293,13 +301,13 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
 
 
     # end of analysis: only prints and file generation below
-
+    '''
     print("TOTAL TASKS_ONLY:\t{}".format(total_start_to_end_taskset))
     print("TOTAL OVERHEAD:\t\t{}\t({:.2f} %)".format(add_to_start_taskset_overhead, add_to_start_taskset_overhead / total_add_to_end_taskset * 100))
     print("TOT WITH OVERHEAD:\t{}".format(total_add_to_end_taskset))
     print("JOB DURATION:\t\t{}".format(job_duration))
     print("TOTAL TA_EXECUTOR:\t\t{} - {}".format(stages['0']['totalduration']/num_cores, total_ta_executor_stages))
-
+    '''
 
     SPARK_CONTEXT = {
         "app_name" : "{}_c{}_t{}_{}l_d{}_tc_{}_n_rounds_{}".format(app_name,
@@ -345,6 +353,15 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     return job_time_struct, stage_time_struct
 
 
+def modify_executors(app_dir, app_name=None):
+    if app_name is None:
+        app_name = app_dir.split(os.sep)[-1]
+    print("opening {}...".format(app_dir + os.sep + 'config.json'))
+    with open(app_dir + os.sep + 'config.json', 'r') as spark_config_file:
+        spark_config = json.load(spark_config_file)
+        spark_config["Control"]["MaxExecutor"] = 3
+    with open(app_dir + os.sep + 'config.json', 'w') as spark_config_file:
+        json.dump(spark_config, spark_config_file, indent=4, sort_keys=True)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
