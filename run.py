@@ -353,13 +353,13 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     return job_time_struct, stage_time_struct
 
 
-def modify_executors(app_dir, app_name=None):
+def modify_executors(app_dir, executors, app_name=None):
     if app_name is None:
         app_name = app_dir.split(os.sep)[-1]
     print("opening {}...".format(app_dir + os.sep + 'config.json'))
     with open(app_dir + os.sep + 'config.json', 'r') as spark_config_file:
         spark_config = json.load(spark_config_file)
-        spark_config["Control"]["MaxExecutor"] = 3
+        spark_config["Control"]["MaxExecutor"] = executors
     with open(app_dir + os.sep + 'config.json', 'w') as spark_config_file:
         json.dump(spark_config, spark_config_file, indent=4, sort_keys=True)
 
