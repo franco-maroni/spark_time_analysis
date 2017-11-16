@@ -13,7 +13,7 @@ if __name__ == "__main__":
 else:
     from . import cfg
 
-PERCENTILES = [71, 72, 73, 74, 75, 76, 77]
+PERCENTILES = [71, 77]
 
 
 def json_serial(obj):
