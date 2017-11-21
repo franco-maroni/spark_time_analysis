@@ -5,7 +5,7 @@ import os
 import re
 import sys
 from functools import reduce
-
+import configparser
 import numpy as np
 
 if __name__ == "__main__":
@@ -169,11 +169,14 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     with open(app_dir + os.sep + 'app.json') as stages_file:
         stages = json.load(stages_file)
 
+    # open cfg_clusters.ini
+    cfg_clusters = configparser.ConfigParser()
+    cfg_clusters.read(os.path.join(app_dir, 'cfg_clusters.ini'))
     # open config.json
     print("opening {}...".format(app_dir + os.sep + 'config.json'))
     with open(app_dir + os.sep + 'config.json') as spark_config_file:
         spark_config = json.load(spark_config_file)
-        job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * spark_config["Control"]["MaxExecutor"]
+        job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * int(cfg_clusters['main']['max_executors'])
         job_time_struct["num_v"] = num_vertices = spark_config['Benchmark']['Config']['numV']
 
     # get first event
@@ -203,8 +206,8 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
             t["t_std_dev"] = np.std(t["task_durations"])
             for p in PERCENTILES:
                 t["t_percentile"+str(p)] = np.percentile(t["task_durations"], p)
-
-            t.pop("task_durations")
+            t["t_2sigma"] = np.mean(t["task_durations"]) + 2 * np.std(t["task_durations"])
+            # t.pop("task_durations")
             num_batches = math.ceil(stages[s]["numtask"] / num_cores)
 
             t["add_to_end_taskset"] = (t["remove_taskset"] - t["add_taskset"]).total_seconds() * 1000
