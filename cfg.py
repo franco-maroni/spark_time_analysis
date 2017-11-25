@@ -45,7 +45,7 @@ def get_log_fields(log_msg):
 
 # zot params
 PLUGIN = "ae2sbvzot"
-TIME_BOUND = 50
+TIME_BOUND = 45
 PARAMETRIC_TC = False
 NO_LOOPS = True
 ANALYSIS_TYPE = "feasibility"

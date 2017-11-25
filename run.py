@@ -268,13 +268,16 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
                         t["add_to_start_taskset_overhead"]/t["add_to_end_taskset"]*100))
             '''
 
-
-    add_to_start_taskset_overhead = reduce(lambda x, y: x + y, [z["add_to_start_taskset_overhead"] for z in stage_time_struct.values()])
-    total_start_to_end_taskset = reduce(lambda x, y: x + y, [z["start_to_end_taskset"] for z in stage_time_struct.values()])
+    add_to_start_taskset_overhead = reduce(lambda x, y: x + y,
+                                           [z["add_to_start_taskset_overhead"] for z in stage_time_struct.values()])
+    total_start_to_end_taskset = reduce(lambda x, y: x + y,
+                                        [z["start_to_end_taskset"] for z in stage_time_struct.values()])
     total_add_to_end_taskset = reduce(lambda x, y: x + y, [z["add_to_end_taskset"] for z in stage_time_struct.values()])
     total_ta_executor_stages = sum_all_stages_by_stats(stage_time_struct, "s_avg_duration_ta_executor")
-    total_ta_master_stages = reduce(lambda x, y: x + y, [z["s_avg_duration_ta_master"] for z in stage_time_struct.values()])
-    total_slowest_task_stages = reduce(lambda x, y: x + y, [z["s_duration_w_slowest_task"] for z in stage_time_struct.values()])
+    total_ta_master_stages = reduce(lambda x, y: x + y,
+                                    [z["s_avg_duration_ta_master"] for z in stage_time_struct.values()])
+    total_slowest_task_stages = reduce(lambda x, y: x + y,
+                                       [z["s_duration_w_slowest_task"] for z in stage_time_struct.values()])
     total_mean_plus_stddev_stages = sum_all_stages_by_stats(stage_time_struct, "s_mean_plus_std_dev_stage_duration")
     total_monocore_ta_master_stages = sum_all_stages_by_stats(stage_time_struct, "sum_of_task_durations_ta_master")
     total_monocore_ta_executor_stages = sum_all_stages_by_stats(stage_time_struct, "sum_of_task_durations_ta_executor")
@@ -293,6 +296,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     job_time_struct["total_mean_plus_stddev_stages"] = total_mean_plus_stddev_stages
     job_time_struct["total_monocore_ta_executor_stages"] = total_monocore_ta_executor_stages
     job_time_struct["total_monocore_ta_master_stages"] = total_monocore_ta_master_stages
+    job_time_struct["total_overhead_monocore"] = total_monocore_ta_master_stages - total_monocore_ta_executor_stages
 
     for p in PERCENTILES:
         job_time_struct["total_percentile"+str(p)] = sum_all_stages_by_stats(stage_time_struct, "s_percentile"+str(p))
