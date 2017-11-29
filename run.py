@@ -177,7 +177,11 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     with open(app_dir + os.sep + 'config.json') as spark_config_file:
         spark_config = json.load(spark_config_file)
         job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * int(cfg_clusters['main']['max_executors'])
-        job_time_struct["num_v"] = num_vertices = spark_config['Benchmark']['Config']['numV']
+        job_time_struct['benchmark_name'] = (spark_config['Benchmark']['Name']).lower()
+        if spark_config['Benchmark']['Name'] == "Pagerank":
+            job_time_struct["num_v"] = var_par = spark_config['Benchmark']['Config']['numV']
+        elif spark_config['Benchmark']['Name'] == "KMeans":
+            job_time_struct["num_of_points"] = var_par = spark_config['Benchmark']['Config']['NUM_OF_POINTS']
 
     # get first event
     first_event = next(i for i in spark_log_lines if i["timestamp"] is not None)["timestamp"]
@@ -355,7 +359,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
 
 
     print("{}, {}, {}, {}\n".format(
-        num_vertices[1], job_duration, total_ta_executor_stages, total_ta_master_stages
+        var_par[1], job_duration, total_ta_executor_stages, total_ta_master_stages
     ))
     return job_time_struct, stage_time_struct
 
