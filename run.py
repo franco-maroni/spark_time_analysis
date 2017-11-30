@@ -176,9 +176,14 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     print("opening {}...".format(app_dir + os.sep + 'config.json'))
     with open(app_dir + os.sep + 'config.json') as spark_config_file:
         spark_config = json.load(spark_config_file)
-        job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * int(cfg_clusters['main']['max_executors'])
+        try:
+            max_executors = int(cfg_clusters['main']['max_executors'])
+        except KeyError as e:
+            print('key not found: {}, getting it from config.json'.format(e))
+            max_executors = spark_config['Control']['MaxExecutor']
+        job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * max_executors
         job_time_struct['benchmark_name'] = (spark_config['Benchmark']['Name']).lower()
-        if spark_config['Benchmark']['Name'] == "Pagerank":
+        if spark_config['Benchmark']['Name'] == "PageRank":
             job_time_struct["num_v"] = var_par = spark_config['Benchmark']['Config']['numV']
         elif spark_config['Benchmark']['Name'] == "KMeans":
             job_time_struct["num_of_points"] = var_par = spark_config['Benchmark']['Config']['NUM_OF_POINTS']
