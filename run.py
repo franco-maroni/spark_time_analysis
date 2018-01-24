@@ -7,6 +7,7 @@ import sys
 from functools import reduce
 import configparser
 import numpy as np
+import glob
 
 if __name__ == "__main__":
     import cfg
@@ -160,8 +161,11 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
         app_name = app_dir.split(os.sep)[-1]
 
     # open spark log file
-    print("opening {}...".format(app_dir + os.sep + 'app.dat'))
-    with open(app_dir + os.sep + 'app.dat') as log_file:
+    dat_paths = glob.glob(os.path.join(app_dir, 'app.dat'))
+    err_paths = glob.glob(os.path.join(app_dir, 'scala-sort-by-key.err'))
+    log_path = dat_paths[0] if dat_paths else err_paths[0]
+    print("opening {}...".format(log_path))
+    with open(log_path) as log_file:
         spark_log_lines = map(lambda x: parse_spark_logline(x), log_file.readlines())
 
     # open ta_executor log file
@@ -182,11 +186,14 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
             print('key not found: {}, getting it from config.json'.format(e))
             max_executors = spark_config['Control']['MaxExecutor']
         job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * max_executors
-        job_time_struct['benchmark_name'] = (spark_config['Benchmark']['Name']).lower()
+        job_time_struct['benchmark_name'] = (spark_config['Benchmark']['Name']).lower().replace("-", "_")
         if spark_config['Benchmark']['Name'] == "PageRank":
             job_time_struct["num_v"] = var_par = spark_config['Benchmark']['Config']['numV']
         elif spark_config['Benchmark']['Name'] == "KMeans":
             job_time_struct["num_of_points"] = var_par = spark_config['Benchmark']['Config']['NUM_OF_POINTS']
+        elif spark_config['Benchmark']['Name'] == "scala-sort-by-key":
+            job_time_struct['benchmark_name'] = 'sort_by_key'
+            job_time_struct["scale_factor"] = var_par = spark_config['Benchmark']['Config']['ScaleFactor']
 
     # get first event
     first_event = next(i for i in spark_log_lines if i["timestamp"] is not None)["timestamp"]
@@ -364,7 +371,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
 
 
     print("{}, {}, {}, {}\n".format(
-        var_par[1], job_duration, total_ta_executor_stages, total_ta_master_stages
+        var_par, job_duration, total_ta_executor_stages, total_ta_master_stages
     ))
     return job_time_struct, stage_time_struct
 
