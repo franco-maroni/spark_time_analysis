@@ -146,6 +146,46 @@ def compute_t_task(stages_struct, num_records, num_task):
         stage['t_task_ta_executor'] = stage['t_record_ta_executor']*reads[stage_id]/(num_task*stage['s_GQ_ta_executor'])
 
 
+def gather_records_rw(stages):
+    not_skipped = {k: v for k, v in stages.items() if v['skipped'] == False}
+    dataset = sorted(map(lambda args: (args[1].update({'id': int(args[0])}) or args[1]),
+                         not_skipped.items()), key=lambda v: v['id'], reverse=False)
+
+    # total_duration = sum(map(lambda x: x['duration'], dataset))/1000
+    # total_data = sum(map(lambda x: max(x['recordsread'], x['recordswrite'], x['shufflerecordsread'], x['shufflerecordswrite']), dataset))
+    reads = {}
+    writes = {}
+    numtask = dataset[0]['numtask']
+    for i in range(0, len(dataset)):
+        print('reads: {}\nwrites: {}'.format(reads, writes))
+        stage = dataset[i]
+        stage_id = str(stage['id'])
+        print('stage_id: {}'.format(stage_id))
+        reads[stage_id] = 0
+        if len(stage['parentsIds']) == 0:
+                reads[stage_id] = stage['recordsread']
+        else:
+            print('stage: {}'.format(stage['parentsIds']))
+            for parent_id in stage['parentsIds']:
+                print('parent_id: {}'.format(parent_id))
+                reads[stage_id] += writes[str(parent_id)]
+
+        if stage['shufflerecordswrite'] > 0 and stage['shufflerecordswrite'] % numtask > 0:
+            writes[stage_id] = stage['shufflerecordswrite']
+        elif stage['recordswrite'] > 0 and stage['recordswrite'] % numtask > 0:
+            writes[stage_id] = stage['recordswrite']
+        else:
+            writes[stage_id] = reads[stage_id]
+    print(reads)
+    print(writes)
+    # add actual reads, writes and io_factor writes to stages_dict
+    for k, v in reads.items():
+        stages[k]['actual_records_read'] = v
+        stages[k]['actual_records_write'] = writes[k]
+        stages[k]['t_record_ta_executor'] = float(stages[k]['duration']) / float(v) if v > 0 else 0
+        stages[k]['io_factor'] = float(writes[k]) / float(v) if v > 0 else 0
+
+
 def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     """
     runs the main time analysis
@@ -172,6 +212,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     print("opening {}...".format(app_dir + os.sep + 'app.json'))
     with open(app_dir + os.sep + 'app.json') as stages_file:
         stages = json.load(stages_file)
+        gather_records_rw(stages)
 
     # open cfg_clusters.ini
     cfg_clusters = configparser.ConfigParser()
@@ -189,6 +230,8 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
         job_time_struct['benchmark_name'] = (spark_config['Benchmark']['Name']).lower().replace("-", "_")
         if spark_config['Benchmark']['Name'] == "PageRank":
             job_time_struct["num_v"] = var_par = spark_config['Benchmark']['Config']['numV']
+        elif spark_config['Benchmark']['Name'] == "SVM":
+            job_time_struct["num_of_examples"] = var_par = spark_config['Benchmark']['Config']['NUM_OF_EXAMPLES']
         elif spark_config['Benchmark']['Name'] == "KMeans":
             job_time_struct["num_of_points"] = var_par = spark_config['Benchmark']['Config']['NUM_OF_POINTS']
         elif spark_config['Benchmark']['Name'] == "scala-sort-by-key":
