@@ -226,7 +226,12 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
         except KeyError as e:
             print('key not found: {}, getting it from config.json'.format(e))
             max_executors = spark_config['Control']['MaxExecutor']
-        job_time_struct["num_cores"] = num_cores = spark_config["Control"]["CoreVM"] * max_executors
+        try:
+            core_vm = cfg_clusters['main']['core_vm']
+        except KeyError as e:
+            print('key not found: {}, getting it from config.json'.format(e))
+            core_vm = spark_config["Control"]["CoreVM"]
+        job_time_struct["num_cores"] = num_cores = core_vm * max_executors
         job_time_struct['benchmark_name'] = (spark_config['Benchmark']['Name']).lower().replace("-", "_")
         if spark_config['Benchmark']['Name'] == "PageRank":
             job_time_struct["num_v"] = var_par = spark_config['Benchmark']['Config']['numV']
