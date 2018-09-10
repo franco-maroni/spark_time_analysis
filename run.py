@@ -268,6 +268,9 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
             t['t_mean'] = np.mean(t["task_durations"])
             t["t_variance"] = np.var(t["task_durations"])
             t["t_std_dev"] = np.std(t["task_durations"])
+            # sort durations and exclude the highest num_cores durations
+            durations_no_init = np.sort(t["task_durations"])[:-num_cores]
+            t['t_mean_no_init'] = np.mean(durations_no_init)
             for p in PERCENTILES:
                 t["t_percentile"+str(p)] = np.percentile(t["task_durations"], p)
             t["t_2sigma"] = np.mean(t["task_durations"]) + 2 * np.std(t["task_durations"])
@@ -345,8 +348,6 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
     total_mean_plus_stddev_stages = sum_all_stages_by_stats(stage_time_struct, "s_mean_plus_std_dev_stage_duration")
     total_monocore_ta_master_stages = sum_all_stages_by_stats(stage_time_struct, "sum_of_task_durations_ta_master")
     total_monocore_ta_executor_stages = sum_all_stages_by_stats(stage_time_struct, "sum_of_task_durations_ta_executor")
-
-
 
     job_time_struct["start_job"] = stage_time_struct['0']["start_taskset"]
     job_duration = (job_time_struct["latest_event"] - job_time_struct["start_job"]).total_seconds() * 1000
