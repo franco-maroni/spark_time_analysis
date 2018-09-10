@@ -227,7 +227,7 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
             print('key not found: {}, getting it from config.json'.format(e))
             max_executors = spark_config['Control']['MaxExecutor']
         try:
-            core_vm = cfg_clusters['main']['core_vm']
+            core_vm = int(cfg_clusters['main']['core_vm'])
         except KeyError as e:
             print('key not found: {}, getting it from config.json'.format(e))
             core_vm = spark_config["Control"]["CoreVM"]
