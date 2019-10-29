@@ -242,6 +242,8 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
         elif spark_config['Benchmark']['Name'] == "scala-sort-by-key":
             job_time_struct['benchmark_name'] = 'sort_by_key'
             job_time_struct["scale_factor"] = var_par = spark_config['Benchmark']['Config']['ScaleFactor']
+        elif spark_config['Benchmark']['Name'] == "Louvain":
+            job_time_struct["size"] = var_par = spark_config['Benchmark']['Config']['size']
 
     # get first event
     first_event = next(i for i in spark_log_lines if i["timestamp"] is not None)["timestamp"]
@@ -296,9 +298,13 @@ def main(app_dir, app_name=None, num_records=None, num_tasks=None):
             diff_avg_task_duration = float(t["t_avg_duration_ta_master"] - t["t_avg_duration_ta_executor"])
             diff_avg_stage_duration = float(t["s_avg_duration_ta_master"] - t["s_avg_duration_ta_executor"])
 
-            t["s_GQ_ta_master"] = t["sum_of_task_durations_ta_master"] / num_cores / t["add_to_end_taskset"]
-            t["s_GQ_ta_executor"] = t["sum_of_task_durations_ta_executor"] / num_cores / t["add_to_end_taskset"]
-            t["t_record_ta_master"] = t["sum_of_task_durations_ta_master"] / stages[s]["actual_records_read"]
+            print("s: {} num_cores: {} t['add_to_end_taskset']={}".format(s, num_cores, t["add_to_end_taskset"]))
+            t["s_GQ_ta_master"] = t["sum_of_task_durations_ta_master"] / num_cores / t["add_to_end_taskset"] \
+                if t["add_to_end_taskset"] else 1
+            t["s_GQ_ta_executor"] = t["sum_of_task_durations_ta_executor"] / num_cores / t["add_to_end_taskset"] \
+                if t["add_to_end_taskset"] else 1
+            t["t_record_ta_master"] = t["sum_of_task_durations_ta_master"] / stages[s]["actual_records_read"] \
+                if t["actual_records_read"] else 1
 
             '''
             print(""" STAGE {} \t({}):
@@ -434,6 +440,7 @@ def modify_executors(app_dir, executors, app_name=None):
         spark_config["Control"]["MaxExecutor"] = executors
     with open(app_dir + os.sep + 'config.json', 'w') as spark_config_file:
         json.dump(spark_config, spark_config_file, indent=4, sort_keys=True)
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
